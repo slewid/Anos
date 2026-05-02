@@ -5,6 +5,8 @@ mov al, 'B'
 int 0x10
 
 mov ah, 0x0e
+mov al, 13
+int 0x10
 mov al, 10
 int 0x10
 
