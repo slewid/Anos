@@ -2,20 +2,18 @@
 [BITS 16]
 
 mov ah, 0x0e
-mov al, 'a'
+mov bx, string
 
-loop:
-
-    int 0x10
-
-    add al, -31
-    int 0x10
-    add al, 32
-
-    inc al
-    cmp al, 'z' + 1
+print:
+    mov al, [bx]
+    cmp al, 0
     je exit
-    jmp loop
+    int 0x10
+    inc bx
+    jmp print
+
+string:
+    db "Hello, World!", 0
 
 exit:
     jmp $
