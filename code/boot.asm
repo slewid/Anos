@@ -20,6 +20,8 @@ mov dh, 0x00
 mov cl, 0x02
 mov dl, [BOOT_DISK]
 int 0x13
+jc disk_error
+
 
 mov ah, 0x0
 mov al, 0x3
@@ -37,6 +39,11 @@ jmp CODE_SEG:start_protected_mode
 
 jmp $
 
+disk_error:
+    mov ah, 0x0e
+    mov al, 'e'
+    int 0x10
+    jmp $
 
 GDT_Start:
     GDT_null:

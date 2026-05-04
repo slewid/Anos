@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-mkdir "temp"
+mkdir -p "temp"
 
 #compile asm
 nasm "code/kernel_entry.asm" -f elf -o "temp/kernel_entry.o"
