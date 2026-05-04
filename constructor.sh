@@ -17,4 +17,4 @@ cat "bin/boot.bin" "bin/full_kernel.bin" > "bin/everything.bin"
 cat "bin/everything.bin" "bin/zeroes.bin" > "bin/OS.bin"
 
 #run
-qemu-system-x86_64 -drive format=raw,file="bin/OS.bin",index=0,if=floppy -m 128M
+qemu-system-x86_64 -drive format=raw,file="OS.bin",index=0,if=floppy -m 128M
