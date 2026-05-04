@@ -1,20 +1,22 @@
 #!/bin/bash
 set -e
 
+mkdir "temp"
+
 #compile asm
-nasm "code/kernel_entry.asm" -f elf -o "obj/kernel_entry.o"
-nasm -f bin "code/boot.asm" -o "bin/boot.bin"
-nasm -f bin "code/zeroes.asm" -o "bin/zeroes.bin"
+nasm "code/kernel_entry.asm" -f elf -o "temp/kernel_entry.o"
+nasm -f bin "code/boot.asm" -o "temp/boot.bin"
+nasm -f bin "code/zeroes.asm" -o "temp/zeroes.bin"
 
 #compile c
-i386-elf-gcc -ffreestanding -m32 -g -c "code/kernel.c" -o "obj/kernel.o"
+i386-elf-gcc -ffreestanding -m32 -g -c "code/kernel.c" -o "temp/kernel.o"
 
 #link
-i386-elf-ld -o "bin/full_kernel.bin" -Ttext 0x7e00 "obj/kernel_entry.o" "obj/kernel.o" --oformat binary
+i386-elf-ld -o "temp/full_kernel.bin" -Ttext 0x7e00 "temp/kernel_entry.o" "temp/kernel.o" --oformat binary
 
 #concatenate
-cat "bin/boot.bin" "bin/full_kernel.bin" > "bin/everything.bin"
-cat "bin/everything.bin" "bin/zeroes.bin" > "bin/OS.bin"
+cat "temp/boot.bin" "temp/full_kernel.bin" > "temp/everything.bin"
+cat "temp/everything.bin" "temp/zeroes.bin" > "OS.bin"
 
 #run
 qemu-system-x86_64 -drive format=raw,file="OS.bin",index=0,if=floppy -m 128M
