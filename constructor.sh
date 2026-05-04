@@ -10,7 +10,7 @@ nasm -f bin "code/zeroes.asm" -o "bin/zeroes.bin"
 i386-elf-gcc -ffreestanding -m32 -g -c "code/kernel.c" -o "obj/kernel.o"
 
 #link
-i386-elf-ld -o "bin/full_kernel.bin" -Ttext 0x1000 "obj/kernel_entry.o" "obj/kernel.o" --oformat binary
+i386-elf-ld -o "bin/full_kernel.bin" -Ttext 0x7e00 "obj/kernel_entry.o" "obj/kernel.o" --oformat binary
 
 #concatenate
 cat "bin/boot.bin" "bin/full_kernel.bin" > "bin/everything.bin"
