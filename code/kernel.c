@@ -2,22 +2,27 @@
 #include <stdint.h>
 //==============================================================
 void print(const char chars[], int len);
-static inline uint8_t inb(uint16_t port);
-static inline void outb(uint16_t port, uint8_t val);
-static inline void io_wait(void);
+void printl(const char* chars);
+void boot_splash();
+//--------------------------------------------------------------
+char get_input();
 char keyboard_getchar(uint8_t sc);
+char keymap[128];
+//--------------------------------------------------------------
 void enable_cursor(uint8_t cursor_start, uint8_t cursor_end);
 void disable_cursor();
 void update_cursor(int x, int y);
+//--------------------------------------------------------------
 void scroll();
-void clear_line(int y);
 void clear_screen();
-void printl(const char* chars);
+void clear_line(int y);
 void new_line();
-void boot_splash();
-char get_input();
 int cursor_row = 0;
 int cursor_col = 0;
+//--------------------------------------------------------------
+static inline uint8_t inb(uint16_t port);
+static inline void outb(uint16_t port, uint8_t val);
+static inline void io_wait(void);
 //==============================================================
 
 extern int main () {
@@ -40,32 +45,6 @@ extern int main () {
         }
     }
 }
-
-char get_input() {
-    if (inb(0x64) & 1) {
-        uint8_t scancode = inb(0x60);
-
-        if (!(scancode & 0x80)) {
-            char c = keyboard_getchar(scancode);
-
-            if (c) {
-                return c;
-            }
-            else {
-                return 0;
-            }
-        }
-    }
-    return 0;
-}
-
-char keymap[0x3a] = {
-    0, 27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
-    '\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
-    0,     'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',
-    0, '\\',  'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',
-    0, 0, 0, ' '
-};
 
 void print(const char chars[], int len) {
     uint16_t* v_mem = (uint16_t*)0xB8000;
@@ -94,63 +73,31 @@ void printl(const char* chars) {
     new_line();
 }
 
-void new_line() {
-    cursor_row++;
-    cursor_col = 0;
-    if (cursor_row >= 25) {
-        scroll();
-    }
-    update_cursor(cursor_col, cursor_row);
+void boot_splash() {
+    printl("  ___        _____      ");
+    printl(" / _ \\      |  _  |     ");
+    printl("/ /_\\ \\_ __ | | | | ___ ");
+    printl("|  _  | '_ \\| | | |/ __|");
+    printl("| | | | | | \\ \\_/ /\\__ \\");
+    printl("\\_| |_/_| |_|\\___/ |___/");
 }
 
-void scroll(){
-    uint16_t* v_mem = (uint16_t*) 0xB8000;
+char get_input() {
+    if (inb(0x64) & 1) {
+        uint8_t scancode = inb(0x60);
 
-    for (int y = 1; y < 25; y++) {
-        for (int x = 0; x < 80; x++){
-            v_mem[(y - 1) * 80 + x] = v_mem[y * 80 + x];
+        if (!(scancode & 0x80)) {
+            char c = keyboard_getchar(scancode);
+
+            if (c) {
+                return c;
+            }
+            else {
+                return 0;
+            }
         }
     }
-    clear_line(24);
-    cursor_row = 24;
-    cursor_col = 0;
-}
-
-void clear_line(int y){
-    uint16_t* v_mem = (uint16_t*) 0xB8000;
-    
-    for (int x = 0; x < 80; x++){
-        v_mem[(y * 80) + x] = (0x02 << 8) | ' ';;
-    }
-}
-
-void clear_screen(){
-    cursor_row = 0;
-    cursor_col = 0;
-
-    for (int y = 0; y < 25; y++){
-        clear_line(y);
-    }
-
-    update_cursor(0, 0);
-}
-
-static inline uint8_t inb(uint16_t port) {
-    uint8_t ret;
-    __asm__ volatile ( "inb %w1, %b0"
-                   : "=a"(ret)
-                   : "Nd"(port)
-                   : "memory");
-    return ret;
-}
-
-static inline void outb(uint16_t port, uint8_t val) {
-    __asm__ volatile ( "outb %b0, %w1" : : "a"(val), "Nd"(port) : "memory");
-
-}  
-
-static inline void io_wait(void) {
-    outb(0x80, 0);
+    return 0;
 }
 
 char keyboard_getchar(uint8_t sc) {
@@ -158,6 +105,14 @@ char keyboard_getchar(uint8_t sc) {
 
     return keymap[sc];
 }
+
+char keymap[128] = {
+    0, 27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
+    '\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
+    0,     'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',
+    0, '\\',  'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',
+    0, 0, 0, ' '
+};
 
 void enable_cursor(uint8_t cursor_start, uint8_t cursor_end) {
 	outb(0x3D4, 0x0A);
@@ -182,11 +137,61 @@ void update_cursor(int x, int y) {
 	outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
 }
 
-void boot_splash() {
-    printl("  ___        _____      ");
-    printl(" / _ \\      |  _  |     ");
-    printl("/ /_\\ \\_ __ | | | | ___ ");
-    printl("|  _  | '_ \\| | | |/ __|");
-    printl("| | | | | | \\ \\_/ /\\__ \\");
-    printl("\\_| |_/_| |_|\\___/ |___/");
+void scroll(){
+    uint16_t* v_mem = (uint16_t*) 0xB8000;
+
+    for (int y = 1; y < 25; y++) {
+        for (int x = 0; x < 80; x++){
+            v_mem[(y - 1) * 80 + x] = v_mem[y * 80 + x];
+        }
+    }
+    clear_line(24);
+    cursor_row = 24;
+    cursor_col = 0;
+}
+
+void clear_screen(){
+    cursor_row = 0;
+    cursor_col = 0;
+
+    for (int y = 0; y < 25; y++){
+        clear_line(y);
+    }
+
+    update_cursor(0, 0);
+}
+
+void clear_line(int y){
+    uint16_t* v_mem = (uint16_t*) 0xB8000;
+    
+    for (int x = 0; x < 80; x++){
+        v_mem[(y * 80) + x] = (0x02 << 8) | ' ';;
+    }
+}
+
+void new_line() {
+    cursor_row++;
+    cursor_col = 0;
+    if (cursor_row >= 25) {
+        scroll();
+    }
+    update_cursor(cursor_col, cursor_row);
+}
+
+static inline uint8_t inb(uint16_t port) {
+    uint8_t ret;
+    __asm__ volatile ( "inb %w1, %b0"
+                   : "=a"(ret)
+                   : "Nd"(port)
+                   : "memory");
+    return ret;
+}
+
+static inline void outb(uint16_t port, uint8_t val) {
+    __asm__ volatile ( "outb %b0, %w1" : : "a"(val), "Nd"(port) : "memory");
+
+}  
+
+static inline void io_wait(void) {
+    outb(0x80, 0);
 }
