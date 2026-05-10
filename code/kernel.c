@@ -15,6 +15,7 @@ void clear_screen();
 void printl(const char* chars);
 void new_line();
 void boot_splash();
+char get_input();
 int cursor_row = 0;
 int cursor_col = 0;
 //==============================================================
@@ -23,31 +24,42 @@ extern int main () {
     enable_cursor(13, 15);
     boot_splash();
 
-    uint8_t scancode = 0;
-    uint8_t last = 0;
-
     while (1) {
-        scancode = inb(0x60);
+        char c = get_input();
+        switch (c) {
+            case 0:
+                break;
+            case '\n':
+                new_line();
+                break;
+            default:
+                char buf[] = {c, '\0'};
+                print(buf, 1);
 
-        if (scancode != last) {
-            char c = keyboard_getchar(scancode);
-            switch (c) {
-                case 0:
-                    break;
-                case '\n':
-                    new_line();
-                    break;
-                default:
-                    char buf[] = {c, '0'};
-                    print(buf, 1);
-                    break;
-            }
+                break;
         }
-        last = scancode;
     }
 }
 
-char keymap[128] = {
+char get_input() {
+    if (inb(0x64) & 1) {
+        uint8_t scancode = inb(0x60);
+
+        if (!(scancode & 0x80)) {
+            char c = keyboard_getchar(scancode);
+
+            if (c) {
+                return c;
+            }
+            else {
+                return 0;
+            }
+        }
+    }
+    return 0;
+}
+
+char keymap[0x3a] = {
     0, 27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
     '\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
     0,     'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',
@@ -142,10 +154,7 @@ static inline void io_wait(void) {
 }
 
 char keyboard_getchar(uint8_t sc) {
-    // ignore key releases
-    if (sc & 0x80) return 0;
-
-    if (sc >= 128) return 0;
+    if (sc > 0x39) return 0;
 
     return keymap[sc];
 }
