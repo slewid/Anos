@@ -40,10 +40,20 @@ extern int main () {
             case '\n':
                 new_line();
                 break;
+            case '\b':
+                if (cursor_col > 0) {
+                    cursor_col--;
+                    print(" ", 1);
+                    cursor_col --;
+                    update_cursor(cursor_col, cursor_row);
+                }
+                break;
+            case '\t':
+                print("    ", 4);
+                break;
             default:
                 char buf[] = {c, '\0'};
                 print(buf, 1);
-
                 break;
         }
     }
