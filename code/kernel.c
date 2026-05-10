@@ -149,7 +149,7 @@ void update_cursor(int x, int y) {
 	outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
 }
 
-void scroll(){
+void scroll() {
     uint16_t* v_mem = (uint16_t*) 0xB8000;
 
     for (int y = 1; y < VGA_HEIGHT; y++) {
@@ -157,12 +157,13 @@ void scroll(){
             v_mem[(y - 1) * VGA_WIDTH + x] = v_mem[y * VGA_WIDTH + x];
         }
     }
-    clear_line(24);
-    cursor_row = 24;
+    clear_line(VGA_HEIGHT - 1);
+    cursor_row = VGA_HEIGHT - 1;
     cursor_col = 0;
+    update_cursor(cursor_col, cursor_row);
 }
 
-void clear_screen(){
+void clear_screen() {
     cursor_row = 0;
     cursor_col = 0;
 
