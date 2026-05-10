@@ -1,7 +1,6 @@
 //==============================================================
 #include <stdint.h>
 //==============================================================
-static const char normal_map[128];
 void print(const char chars[], int len);
 static inline uint8_t inb(uint16_t port);
 static inline void outb(uint16_t port, uint8_t val);
@@ -23,7 +22,7 @@ int cursor_col = 0;
 extern int main () {
     enable_cursor(13, 15);
     boot_splash();
-    
+
     uint8_t scancode = 0;
     uint8_t last = 0;
 
@@ -60,16 +59,17 @@ void print(const char chars[], int len) {
     uint16_t* v_mem = (uint16_t*)0xB8000;
 
     for (int i = 0; i < len; i++) {
-        int offset = (cursor_row * 80) + (cursor_col + i);
+        int offset = (cursor_row * 80) + (cursor_col);
         v_mem[offset] = (0x02 << 8) | chars[i];
-    }
-    cursor_col += len;
-    if (cursor_col >= 80){
-        cursor_col = 0;
-        cursor_row++;
-    }
-    if (cursor_row >= 25) {
-        scroll();
+    
+        cursor_col ++;
+        if (cursor_col >= 80){
+            cursor_col = 0;
+            cursor_row++;
+        }
+        if (cursor_row >= 25) {
+            scroll();
+        }
     }
     update_cursor(cursor_col, cursor_row);
 }
@@ -94,9 +94,9 @@ void new_line() {
 void scroll(){
     uint16_t* v_mem = (uint16_t*) 0xB8000;
 
-    for (int y = 0; y < 24; y++) {
+    for (int y = 1; y < 25; y++) {
         for (int x = 0; x < 80; x++){
-            v_mem[(y+1) * 80 + x] = v_mem[y * 80 + x];
+            v_mem[(y - 1) * 80 + x] = v_mem[y * 80 + x];
         }
     }
     clear_line(24);
@@ -106,8 +106,9 @@ void scroll(){
 
 void clear_line(int y){
     uint16_t* v_mem = (uint16_t*) 0xB8000;
+    
     for (int x = 0; x < 80; x++){
-        v_mem[(y * 80) + x] = 0x0720;
+        v_mem[(y * 80) + x] = (0x02 << 8) | ' ';;
     }
 }
 
