@@ -11,7 +11,7 @@ nasm -f bin "code/boot.asm" -o "temp/boot.bin"
 i386-elf-gcc -ffreestanding -m32 -g -c "code/kernel.c" -o "temp/kernel.o"
 
 #link
-i386-elf-ld -o "temp/full_kernel.bin" -Ttext 0x7e00 "temp/kernel_entry.o" "temp/kernel.o" --oformat binary -nostdlib
+i386-elf-ld -o "temp/full_kernel.bin" -Ttext 0x1000 "temp/kernel_entry.o" "temp/kernel.o" --oformat binary -nostdlib
 
 #concatenate
 cat "temp/boot.bin" "temp/full_kernel.bin" > "OS.bin"
