@@ -4,7 +4,7 @@
 void print(const char chars[], int len);
 void printl(const char* chars);
 void boot_splash();
-#define VGA_COLOUR 0x02
+uint8_t vga_colour = 2;
 //--------------------------------------------------------------
 char get_input();
 char keyboard_getchar(uint8_t sc);
@@ -12,6 +12,7 @@ char keymap[128];
 #define INPUT_SIZE 256
 int strcmp(const char* a, const char* b);
 void split_string(char* input, char** cmd, char** args);
+int string_to_int(const char* str);
 void execute_command(const char* cmd, const char* args);
 //--------------------------------------------------------------
 void enable_cursor(uint8_t cursor_start, uint8_t cursor_end);
@@ -72,7 +73,7 @@ int main () {
                         uint16_t* v_mem = (uint16_t*)0xB8000;
                         int offset = cursor_row * VGA_WIDTH + cursor_col;
 
-                        v_mem[offset] = (VGA_COLOUR << 8) | ' ';
+                        v_mem[offset] = (vga_colour << 8) | ' ';
 
                         update_cursor(cursor_col, cursor_row);
                     }
@@ -94,7 +95,7 @@ void print(const char chars[], int len) {
 
     for (int i = 0; i < len; i++) {
         int offset = (cursor_row * VGA_WIDTH) + (cursor_col);
-        v_mem[offset] = (VGA_COLOUR << 8) | chars[i];
+        v_mem[offset] = (vga_colour << 8) | chars[i];
     
         cursor_col ++;
         if (cursor_col >= VGA_WIDTH){
@@ -195,9 +196,22 @@ void split_string(char* input, char** cmd, char** args) {
     }
 }
 
+int string_to_int(const char* str) {
+    int num = 0;
+
+    while (*str) {
+        if (*str < '0' || *str > '9') {
+            return 0;
+        }
+        num = num * 10 + (*str - '0');
+        str++;
+    }
+    return num;
+}
+
 void execute_command(const char* cmd, const char* args) {
     if (strcmp(cmd, "help")) {
-        printl("help clear echo about reboot shutdown");
+        printl("help clear echo colour about reboot shutdown");
     }
 
     else if (strcmp(cmd, "clear")) {
@@ -221,6 +235,18 @@ void execute_command(const char* cmd, const char* args) {
     else if (strcmp(cmd, "echo")) {
         printl(args);
     }
+
+    else if (strcmp(cmd, "colour")) {
+        int num = string_to_int(args);
+        if (num) {
+            vga_colour = num;
+            printl("Changed colour");
+        } else {
+            printl("INVALID NUMBER");
+        }
+
+    }
+
     else if (strlen(cmd) == 0) {}
 
     else {
@@ -280,7 +306,7 @@ void clear_line(int y){
     uint16_t* v_mem = (uint16_t*) 0xB8000;
     
     for (int x = 0; x < VGA_WIDTH; x++){
-        v_mem[(y * VGA_WIDTH) + x] = (VGA_COLOUR << 8) | ' ';
+        v_mem[(y * VGA_WIDTH) + x] = (vga_colour << 8) | ' ';
     }
 }
 
