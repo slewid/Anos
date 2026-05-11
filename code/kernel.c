@@ -9,6 +9,10 @@ void boot_splash();
 char get_input();
 char keyboard_getchar(uint8_t sc);
 char keymap[128];
+#define INPUT_SIZE 256
+int strcmp(const char* a, const char* b);
+void split_string(char* input, char** cmd, char** args);
+void execute_command(const char* cmd, const char* args);
 //--------------------------------------------------------------
 void enable_cursor(uint8_t cursor_start, uint8_t cursor_end);
 void disable_cursor();
@@ -25,36 +29,62 @@ int cursor_col = 0;
 //--------------------------------------------------------------
 static inline uint8_t inb(uint16_t port);
 static inline void outb(uint16_t port, uint8_t val);
+static inline void outw(uint16_t port, uint16_t val);
 static inline void io_wait(void);
 //==============================================================
 
-extern int main () {
+int main () {
     enable_cursor(13, 15);
     boot_splash();
 
     while (1) {
-        char c = get_input();
-        switch (c) {
-            case 0:
-                break;
-            case '\n':
-                new_line();
-                break;
-            case '\b':
-                if (cursor_col > 0) {
-                    cursor_col--;
-                    print(" ", 1);
-                    cursor_col --;
-                    update_cursor(cursor_col, cursor_row);
-                }
-                break;
-            case '\t':
-                print("    ", 4);
-                break;
-            default:
-                char buf[] = {c, '\0'};
-                print(buf, 1);
-                break;
+        char input[INPUT_SIZE];
+        int input_pos = 0;
+
+        print("> ", 2);
+
+        while (1) {
+            char c = get_input();
+
+            if (!c) {
+                continue;
+            }
+            switch (c) {
+                case '\n':
+                    input[input_pos] = '\0';
+
+                    new_line();
+                    char* cmd;
+                    char* args;
+                    split_string(input, &cmd, &args);
+                    execute_command(cmd, args);
+
+                    input_pos = 0;
+
+                    print("> ", 2);
+                    break;
+
+                case '\b':
+                    if (input_pos > 0 && cursor_col > 0) {
+                        input_pos--;
+                        cursor_col--;
+
+                        uint16_t* v_mem = (uint16_t*)0xB8000;
+                        int offset = cursor_row * VGA_WIDTH + cursor_col;
+
+                        v_mem[offset] = (VGA_COLOUR << 8) | ' ';
+
+                        update_cursor(cursor_col, cursor_row);
+                    }
+                    break;
+
+                default:
+                    if (input_pos < INPUT_SIZE - 1) {
+                        input[input_pos++] = c;
+                        print(&c, 1);
+                    }
+                    break;
+            }
         }
     }
 }
@@ -127,6 +157,78 @@ char keymap[128] = {
     0, 0, 0, ' '
 };
 
+int strcmp(const char* a, const char* b) {
+    int i = 0;
+
+    while (a[i] && b[i]) {
+        if (a[i] != b[i]) {
+            return 0;
+        }
+        i++;
+    }
+
+    return a[i] == b[i];
+}
+
+int strlen(const char* str) {
+    int len = 0;
+
+    while (str[len]) {
+        len++;
+    }
+    return len;
+}
+
+void split_string(char* input, char** cmd, char** args) {
+    *cmd = input;
+
+    while (*input && *input != ' ') {
+        input++;
+    }
+
+    if (*input) {
+        *input = '\0';
+        input++;
+        *args = input;
+    } else {
+        *args = "";
+    }
+}
+
+void execute_command(const char* cmd, const char* args) {
+    if (strcmp(cmd, "help")) {
+        printl("help clear echo about reboot shutdown");
+    }
+
+    else if (strcmp(cmd, "clear")) {
+        clear_screen();
+    }
+
+    else if (strcmp(cmd, "about")) {
+        printl("MyOS kernel");
+    }
+
+    else if (strcmp(cmd, "reboot")) {
+        printl("Rebooting...");
+        outb(0x64, 0xFE);
+    }
+
+    else if (strcmp(cmd, "shutdown")) {
+        printl("Power off... ");
+        outw(0x604, 0x2000);
+    }
+
+    else if (strcmp(cmd, "echo")) {
+        printl(args);
+    }
+    else if (strlen(cmd) == 0) {}
+
+    else {
+        print("Unknown command: ", 17);
+        printl(cmd);
+    }
+}
+
 void enable_cursor(uint8_t cursor_start, uint8_t cursor_end) {
 	outb(0x3D4, 0x0A);
 	outb(0x3D5, (inb(0x3D5) & 0xC0) | cursor_start);
@@ -178,7 +280,7 @@ void clear_line(int y){
     uint16_t* v_mem = (uint16_t*) 0xB8000;
     
     for (int x = 0; x < VGA_WIDTH; x++){
-        v_mem[(y * VGA_WIDTH) + x] = (VGA_COLOUR << 8) | ' ';;
+        v_mem[(y * VGA_WIDTH) + x] = (VGA_COLOUR << 8) | ' ';
     }
 }
 
@@ -204,6 +306,11 @@ static inline void outb(uint16_t port, uint8_t val) {
     __asm__ volatile ( "outb %b0, %w1" : : "a"(val), "Nd"(port) : "memory");
 
 }  
+
+static inline void outw(uint16_t port, uint16_t val) {
+    __asm__ volatile ( "outw %0, %1" : : "a"(val), "Nd"(port) : "memory");
+
+} 
 
 static inline void io_wait(void) {
     outb(0x80, 0);
