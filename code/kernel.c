@@ -20,6 +20,7 @@ void disable_cursor();
 void update_cursor(int x, int y);
 //--------------------------------------------------------------
 void scroll();
+void update_screen();
 void clear_screen();
 void clear_line(int y);
 void new_line();
@@ -211,11 +212,16 @@ int string_to_int(const char* str) {
 
 void execute_command(const char* cmd, const char* args) {
     if (strcmp(cmd, "help")) {
-        printl("help clear echo colour about reboot shutdown");
+        printl("help clear refresh echo colour about reboot shutdown");
     }
 
     else if (strcmp(cmd, "clear")) {
         clear_screen();
+    }
+
+    else if (strcmp(cmd, "refresh")) {
+        printl("Refreshing screen");
+        update_screen();
     }
 
     else if (strcmp(cmd, "about")) {
@@ -241,6 +247,7 @@ void execute_command(const char* cmd, const char* args) {
         if (num) {
             vga_colour = num;
             printl("Changed colour");
+            update_screen();
         } else {
             printl("INVALID NUMBER");
         }
@@ -289,6 +296,13 @@ void scroll() {
     cursor_row = VGA_HEIGHT - 1;
     cursor_col = 0;
     update_cursor(cursor_col, cursor_row);
+}
+
+void update_screen() {
+    uint16_t* v_mem = (uint16_t*) 0xB8000;
+
+    for (int i = 0; i < VGA_HEIGHT * VGA_WIDTH; i++) {
+        v_mem[i] = ((uint16_t)vga_colour << 8) | (v_mem[i] & 0x00FF);    }
 }
 
 void clear_screen() {
