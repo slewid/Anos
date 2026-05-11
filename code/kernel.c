@@ -39,54 +39,52 @@ int main () {
     enable_cursor(13, 15);
     boot_splash();
 
+    char input[INPUT_SIZE];
+    int input_pos = 0;
+
+    print("> ", 2);
+
     while (1) {
-        char input[INPUT_SIZE];
-        int input_pos = 0;
+        char c = get_input();
 
-        print("> ", 2);
+        if (!c) {
+            continue;
+        }
+        switch (c) {
+            case '\n':
+                input[input_pos] = '\0';
 
-        while (1) {
-            char c = get_input();
+                new_line();
+                char* cmd;
+                char* args;
+                split_string(input, &cmd, &args);
+                execute_command(cmd, args);
 
-            if (!c) {
-                continue;
-            }
-            switch (c) {
-                case '\n':
-                    input[input_pos] = '\0';
+                input_pos = 0;
 
-                    new_line();
-                    char* cmd;
-                    char* args;
-                    split_string(input, &cmd, &args);
-                    execute_command(cmd, args);
+                print("> ", 2);
+                break;
 
-                    input_pos = 0;
+            case '\b':
+                if (input_pos > 0 && cursor_col > 0) {
+                    input_pos--;
+                    cursor_col--;
 
-                    print("> ", 2);
-                    break;
+                    uint16_t* v_mem = (uint16_t*)0xB8000;
+                    int offset = cursor_row * VGA_WIDTH + cursor_col;
 
-                case '\b':
-                    if (input_pos > 0 && cursor_col > 0) {
-                        input_pos--;
-                        cursor_col--;
+                    v_mem[offset] = ((uint16_t)vga_colour << 8) | ' ';
 
-                        uint16_t* v_mem = (uint16_t*)0xB8000;
-                        int offset = cursor_row * VGA_WIDTH + cursor_col;
+                    update_cursor(cursor_col, cursor_row);
+                }
+                break;
 
-                        v_mem[offset] = (vga_colour << 8) | ' ';
-
-                        update_cursor(cursor_col, cursor_row);
-                    }
-                    break;
-
-                default:
-                    if (input_pos < INPUT_SIZE - 1) {
-                        input[input_pos++] = c;
-                        print(&c, 1);
-                    }
-                    break;
-            }
+            default:
+                if (input_pos < INPUT_SIZE - 1) {
+                    input[input_pos++] = c;
+                    print(&c, 1);
+                }
+                break;
         }
     }
 }
