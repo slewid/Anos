@@ -2,19 +2,24 @@
 KERNEL_LOCATION equ 0x1000
 
 MODE_INFO_BLOCK equ 0x8000
-BOOT_DISK: db0
+BOOT_DISK: db 0
 
+; --------------------
 ; save boot drive
+; --------------------
 mov [BOOT_DISK], dl
 
+; --------------------
 ; setup real mode
+; --------------------
 xor ax, ax                          
 mov ds, ax
 mov ss, ax
 mov sp, 0x7000
 
-
+; --------------------
 ; disk read kernel (32 sectors)
+; --------------------
 mov ax, 0x0000
 mov es, ax
 mov bx, KERNEL_LOCATION
@@ -30,19 +35,20 @@ mov dl, [BOOT_DISK]
 int 0x13                
 jc disk_error
 
-
-
-push ds
-pop es
-
+; --------------------
+; vbe mode
+; --------------------
 mov ax, 0x4F01
 mov cx, 0x118
-mov di, mode_info_block
+mov di, MODE_INFO_BLOCK
 int 0x10
 
 cmp ax, 0x004F
 jne vbe_error
 
+; --------------------
+; set vbe mode
+; --------------------
 mov ax, 0x4F02
 mov bx, 0x4118
 int 0x10
@@ -50,34 +56,31 @@ int 0x10
 cmp ax, 0x004F
 jne vbe_error
 
-mov eax, [mode_info_block + 0x28]
+; framebuffer pointer
+mov eax, [MODE_INFO_BLOCK + 0x28]
 mov [FRAMEBUFFER_ADDR], eax
 
-mov eax, [0x8000 + 0x28]
-mov [FRAMEBUFFER_PTR], eax
-
-
-
-CODE_SEG equ GDT_code - GDT_start
-DATA_SEG equ GDT_data - GDT_start
-
+; --------------------
+; protected mode setup
+; --------------------
 cli
+
 lgdt [GDT_descriptor]
+
 mov eax, cr0
 or eax, 1
 mov cr0, eax
+
 jmp CODE_SEG:start_protected_mode
 
-jmp $
-mode_info_block:
-    times 256 db 0
-
+; --------------------
+; errors
+; --------------------
 disk_error:
     mov ah, 0x0e
     mov al, 'e'
     int 0x10
     jmp $
-BOOT_DISK: db 0
 
 vbe_error:
     mov ah, 0x0e
@@ -85,6 +88,9 @@ vbe_error:
     int 0x10
     jmp $
 
+; --------------------
+; GDT
+; --------------------
 GDT_start:
     GDT_null:
         dd 0x0
@@ -112,18 +118,26 @@ GDT_descriptor:
     dw GDT_end - GDT_start - 1
     dd GDT_start
 
+CODE_SEG equ GDT_code - GDT_start
+DATA_SEG equ GDT_data - GDT_start
 
+; --------------------
+; protected mode entry
+; --------------------
 [bits 32]
 start_protected_mode:
     mov ax, DATA_SEG
 	mov ds, ax
-	mov ss, ax
 	mov es, ax
+	mov ss, ax
 	mov fs, ax
 	mov gs, ax
 	
 	mov ebp, 0x90000		
 	mov esp, ebp
     
-    mov eax, [FRAMEBUFFER_PTR]
+    mov eax, [FRAMEBUFFER_ADDR]
+
     jmp KERNEL_LOCATION
+
+FRAMEBUFFER_ADDR: dd 0
