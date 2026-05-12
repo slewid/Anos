@@ -36,6 +36,6 @@ echo "== Writing stage2 (sector 1) =="
 dd if="build/stage2.bin" of="disk.img" bs=1M seek=1 conv=notrunc status=none
 
 echo "== Writing kernel (sector 10) =="
-dd if="build/stage2.bin" of="disk.img" bs=1M seek=10 conv=notrunc status=none
+dd if="build/kernel.bin" of="disk.img" bs=1M seek=10 conv=notrunc status=none
 
-qemu-system-i386 -drive format=raw,file=disk.img -m 128M
+qemu-system-i386 -fda disk.img -m 128M

@@ -1,4 +1,5 @@
 [org 0x7c00]
+
 mov [BOOT_DRIVE], dl
 
 ; prints B to screen if correctly booted first stage
@@ -26,7 +27,7 @@ mov es, ax
 mov bx, 0x7e00
 
 mov ah, 0x02
-mov al, 1
+mov al, 1 ; CHANGE TO 4
 mov ch, 0
 mov cl, 2
 mov dh, 0

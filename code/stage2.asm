@@ -1,4 +1,8 @@
-[org 0x7e00]                        
+[org 0x7e00] 
+mov ah, 0x0e
+mov al, 'S'
+int 0x10
+
 KERNEL_LOCATION equ 0x1000
 
 MODE_INFO_BLOCK equ 0x8000
@@ -8,6 +12,7 @@ BOOT_DISK: db 0
 ; save boot drive
 ; --------------------
 mov [BOOT_DISK], dl
+
 
 ; --------------------
 ; setup real mode
