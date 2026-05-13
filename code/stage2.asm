@@ -1,3 +1,4 @@
+[bits 16]
 [org 0x7e00] 
 mov ah, 0x0e
 mov al, 'S'
@@ -9,18 +10,17 @@ MODE_INFO_BLOCK equ 0x8000
 BOOT_DISK: db 0
 
 ; --------------------
-; save boot drive
-; --------------------
-mov [BOOT_DISK], dl
-
-
-; --------------------
 ; setup real mode
 ; --------------------
 xor ax, ax                          
 mov ds, ax
 mov ss, ax
-mov sp, 0x7000
+mov sp, 0x9000
+
+; --------------------
+; save boot drive
+; --------------------
+mov [BOOT_DISK], dl
 
 ; --------------------
 ; disk read kernel (32 sectors)
@@ -40,26 +40,79 @@ mov dl, [BOOT_DISK]
 int 0x13                
 jc disk_error
 
+cmp ah, 0
+jne disk_error
 ; --------------------
-; vbe mode
+; get VBE mode info
 ; --------------------
+mov ax, 0x4F00
+mov di, MODE_INFO_BLOCK
+
+push es
+xor bx, bx
+mov es, bx
+
+; prepare buffer
+mov dword [MODE_INFO_BLOCK], 'VBE2'
+
+xor ax, ax
+mov es, ax
+mov di, MODE_INFO_BLOCK
+
+mov ax, 0x4F00
+int 0x10
+
+jc vbe_error_1
+cmp ax, 0x004F
+jne vbe_error_1
+
+; now check BIOS-filled signature
+cmp dword [MODE_INFO_BLOCK], 'VESA'
+jne vbe_error_2
+
 mov ax, 0x4F01
 mov cx, 0x118
 mov di, MODE_INFO_BLOCK
+
+push es
+xor bx, bx
+mov es, bx
+
 int 0x10
 
+pop es
+
+jc vbe_error_3
 cmp ax, 0x004F
-jne vbe_error
+jne vbe_error_3
+
+mov ax, [MODE_INFO_BLOCK + 0x00]
+test ax, 0x0080
+jz vbe_error_3
+
+mov eax, [MODE_INFO_BLOCK + 0x28]
+test eax, eax
+jz vbe_error_3
+
+
 
 ; --------------------
 ; set vbe mode
 ; --------------------
 mov ax, 0x4F02
 mov bx, 0x4118
+
+push es
+xor dx, dx
+mov es, dx
+
 int 0x10
 
+pop es
+jc vbe_error_3
 cmp ax, 0x004F
-jne vbe_error
+jne vbe_error_3
+
 
 ; framebuffer pointer
 mov eax, [MODE_INFO_BLOCK + 0x28]
@@ -68,6 +121,10 @@ mov [FRAMEBUFFER_ADDR], eax
 ; --------------------
 ; protected mode setup
 ; --------------------
+in al, 0x92
+or al, 2
+out 0x92, al
+
 cli
 
 lgdt [GDT_descriptor]
@@ -87,9 +144,21 @@ disk_error:
     int 0x10
     jmp $
 
-vbe_error:
+vbe_error_1:
     mov ah, 0x0e
-    mov al, 'v'
+    mov al, '1'
+    int 0x10
+    jmp $
+
+vbe_error_2:
+    mov ah, 0x0e
+    mov al, '2'
+    int 0x10
+    jmp $
+
+vbe_error_3:
+    mov ah, 0x0e
+    mov al, '3'
     int 0x10
     jmp $
 
@@ -141,8 +210,32 @@ start_protected_mode:
 	mov ebp, 0x90000		
 	mov esp, ebp
     
-    mov eax, [FRAMEBUFFER_ADDR]
+    BOOT_INFO equ 0x9000
 
-    jmp KERNEL_LOCATION
+    ; framebuffer (32-bit pointer)
+    mov eax, [  MODE_INFO_BLOCK + 0x28]
+    mov [BOOT_INFO + 0], eax
 
+    ; pitch (16-bit → zero extended)
+    movzx eax, word [MODE_INFO_BLOCK + 0x10]
+    mov [BOOT_INFO + 12], eax
+
+    ; width
+    movzx eax, word [MODE_INFO_BLOCK + 0x12]
+    mov [BOOT_INFO + 4], eax
+
+    ; height
+    movzx eax, word [MODE_INFO_BLOCK + 0x14]
+    mov [BOOT_INFO + 8], eax
+
+    ; bpp
+    xor eax, eax
+    mov al, [MODE_INFO_BLOCK + 0x19]
+    mov [BOOT_INFO + 16], eax
+
+    mov eax, BOOT_INFO
+    jmp CODE_SEG:KERNEL_LOCATION
+
+
+times 512 db 0
 FRAMEBUFFER_ADDR: dd 0

@@ -34,8 +34,35 @@ static inline void outb(uint16_t port, uint8_t val);
 static inline void outw(uint16_t port, uint16_t val);
 static inline void io_wait(void);
 //==============================================================
+typedef struct {
+    uint32_t* framebuffer;
+    uint32_t width;
+    uint32_t height;
+    uint32_t pitch;
+    uint32_t bpp;
+} boot_info_t;
 
-int main () {
+
+void main(boot_info_t* boot) {
+    uint32_t* fb = (uint32_t*)boot->framebuffer;
+
+    uint32_t pitch_pixels = boot->pitch / (boot->bpp / 8);
+
+    uint32_t w = boot->width;
+    uint32_t h = boot->height;
+
+    // STEP 1: clear screen with a known pattern
+    for (uint32_t y = 0; y < h; y++) {
+        for (uint32_t x = 0; x < w; x++) {
+
+            // encode position into pixel
+            fb[y * pitch_pixels + x] = 0x00FFFFFF;
+        }
+    }
+}
+
+
+void old() {
     enable_cursor(13, 15);
     boot_splash();
 

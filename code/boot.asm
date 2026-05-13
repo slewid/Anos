@@ -36,7 +36,7 @@ mov dl, [BOOT_DRIVE]
 int 0x13
 
 jc disk_error
-
+mov dl, [BOOT_DRIVE]
 ; jump to loaded sector
 jmp 0x0000:0x7e00
 

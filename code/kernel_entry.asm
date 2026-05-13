@@ -13,9 +13,10 @@ _start:
     mov esp, stack_top
     mov ebp, esp
 
-    ; optional: clear direction flag
+    ; clear direction flag
     cld
 
+    push eax
     ; -------------------------
     ; call C kernel
     ; -------------------------
